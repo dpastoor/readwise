@@ -1,0 +1,113 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+
+```{r}
+library(tidyverse)
+library(testthat)
+```
+
+```{r}
+readwise_data <- read_csv("../data/readwise-data.csv")
+```
+
+```{r}
+apostrophy <- "‚Äô"
+apostrophy2 <- "‚Äò"
+long_dash <- "‚Äî"
+quote <- "‚Äú"
+quote2 <- "‚Äù"
+triple_dot <- "¬†.¬†.¬†."
+```
+
+```{r}
+replace_characters <- function(.x, replacements) {
+  return(str_replace_all(.x, 
+           set_names(
+              c(
+                apostrophy = "'",
+                apostrophy2 = "'",
+                long_dash = "-",
+                quote = '"',
+                quote2 = '"',
+                triple_dot = "..."
+                ), 
+              c(apostrophy, apostrophy2, long_dash, quote, quote2, triple_dot))
+    )
+  )
+}
+```
+
+testing replacements, if needed. It looks like these actually
+might not be needed as its reading in fine to R, just rendered funkily in excel
+
+```{r}
+expect_equal(replace_characters(apostrophy), "'")
+expect_equal(replace_characters(paste0("misc", apostrophy)), "misc'")
+expect_equal(replace_characters("world‚Äù¬†.¬†.¬†."), 'world"...')
+expect_equal(replace_characters(" ‚Äòworking software‚Äô "), " 'working software' ")
+```
+
+```{r}
+replaced_data <- readwise_data %>%
+  mutate(highlight = replace_characters(Highlight)) %>%
+  select(highlight, `Book Title`, Location, Highlight)
+```
+
+```{r}
+replaced_data %>% distinct(`Book Title`) %>%
+  glue::glue_data("\"{`Book Title`}\",")
+```
+
+```{r}
+books <- c(
+"Managing Humans: Biting and Humorous Tales of a Software Engineering Manager",
+"The User's Journey: Storymapping Products That People Love",
+"Kanban: Workflow Visualized: An Expert's Guide",
+"Impact Mapping: Making a big impact with software products and projects",
+"An Elegant Puzzle: Systems of Engineering Management",
+"How Not to Be Wrong: The Power of Mathematical Thinking",
+"Sprint: How to Solve Big Problems and Test New Ideas in Just Five Days",
+"Measure What Matters: How Google, Bono, and the Gates Foundation Rock the World with OKRs",
+"Agile Project Management with Kanban (Developer Best Practices)",
+"Startup CEO: A Field Guide to Scaling Up Your Business, + Website",
+"The Scientist’s Guide to Writing: How to Write More Easily and Effectively throughout Your Scientific Career",
+"The Manager's Path: A Guide for Tech Leaders Navigating Growth and Change",
+"Presenting Data Effectively: Communicating Your Findings for Maximum Impact",
+"Made to Stick: Why Some Ideas Survive and Others Die",
+"Product Management in Practice: A Real-World Guide to the Key Connective Role of the 21st Century",
+"Peopleware: Productive Projects and Teams",
+"The Phoenix Project: A Novel About IT, DevOps, and Helping Your Business Win",
+"Clean Code: A Handbook of Agile Software Craftsmanship (Robert C. Martin Series)",
+"Founders at Work: Stories of Startups' Early Days",
+"Cold Calling Techniques (That Really Work!)",
+"Radical Candor: Be a Kick-Ass Boss Without Losing Your Humanity",
+"Apprenticeship Patterns: Guidance for the Aspiring Software Craftsman",
+"Principles: Life and Work",
+"Crucial Conversations Tools for Talking When Stakes Are High, Second Edition (Business Books)"
+)
+```
+
+
+```{r}
+keep_books <- replaced_data %>%
+  rename(book_title = `Book Title`) %>%
+  filter(book_title %in% books) 
+```
+
+```{r}
+cat("# Highlights \n\n", file = "highlights.md")
+keep_books %>%
+  split(.$book_title) %>%
+  iwalk(function(.x, .title) {
+    cat(glue::glue("## {.title} \n\n\n"),file = "highlights.md", append = TRUE)
+    cat(glue::glue("{.x$highlight}\n\n\n"), file = "highlights.md", append = TRUE)
+  })
+```
+
+```{r}
+sessioninfo::session_info()
+```
+
